@@ -169,10 +169,60 @@ int solve_phase_4(uint64_t challenge, char *out, size_t cap) {
 }
 
 int solve_phase_5(uint64_t challenge, char *out, size_t cap) {
+    /*
+     * 按实际 next 链的顺序排列。
+     * 每行分别是该节点的 value 和 tag。
+     * p5_heads[0..7] 对应这里的 nodes[0..7]。
+     */
+    static const struct {
+        uint32_t value;
+        uint32_t tag;
+    } nodes[] = {
+        {UINT32_C(0x07ed), UINT32_C(0x0736)},
+        {UINT32_C(0x63c9), UINT32_C(0x0b61)},
+        {UINT32_C(0x8597), UINT32_C(0x014c)},
+        {UINT32_C(0x5888), UINT32_C(0x047e)},
+        {UINT32_C(0xa30f), UINT32_C(0x0666)},
+        {UINT32_C(0xa992), UINT32_C(0x0077)},
+        {UINT32_C(0xee97), UINT32_C(0x051a)},
+        {UINT32_C(0xb463), UINT32_C(0x0a11)},
+        {UINT32_C(0xfde8), UINT32_C(0x0273)},
+        {UINT32_C(0x49a3), UINT32_C(0x0367)},
+        {UINT32_C(0xe590), UINT32_C(0x0989)},
+        {UINT32_C(0x9b20), UINT32_C(0x087b)}
+    };
+
     uint32_t values[MAX_FIELDS] = {0};
-    size_t count = 0;
-    (void)challenge;
-    // TODO: 根据 phase_05 的汇编，用 challenge 算出口令中的各个整数，依次存入 values，并把 count 改为整数个数。
+    size_t count = 2;
+
+    uint32_t index =
+        (uint32_t)(challenge & UINT64_C(7));
+
+    uint32_t steps =
+        (uint32_t)((challenge >> 3) & UINT64_C(3));
+
+    uint32_t result =
+        (uint32_t)(challenge >> 6)
+        ^ (uint32_t)(challenge >> 32)
+        ^ UINT32_C(0x3752);
+
+    uint32_t last_tag = 0;
+
+    // 包含起始节点，因此处理 steps + 1 次。
+    for (uint32_t i = 0; i <= steps; ++i) {
+        uint32_t value = nodes[index + i].value;
+        uint32_t tag = nodes[index + i].tag;
+
+        result += value;
+        result *= UINT32_C(5);
+        result ^= tag;
+
+        last_tag = tag;
+    }
+
+    values[0] = result;
+    values[1] = last_tag;
+
     return write_answer(out, cap, values, count);
 }
 
