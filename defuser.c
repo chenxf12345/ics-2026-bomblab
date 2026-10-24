@@ -288,12 +288,55 @@ int solve_phase_6(uint64_t challenge, char *out, size_t cap) {
     return write_answer(out, cap, values, count);
 }
 
-int solve_secret(uint64_t challenge, uint64_t context, char *out, size_t cap) {
-    (void)challenge;
-    (void)context;
-    (void)out;
-    (void)cap;
-    // TODO（选做）: 根据 secret_gate、secret_copy 和 secret_phase 的汇编构造完整的第七行，写入 out 后返回 0。
-    // 第七行不一定只有整数，可以直接用 snprintf 写入；还没完成时保持返回 1，测试会显示 not attempted。
-    return 1;
+int solve_secret(uint64_t challenge, uint64_t context,
+                 char *out, size_t cap) {
+    uint32_t selector =
+        (uint32_t)(context & UINT64_C(3));
+
+    uint32_t folded_challenge =
+        (uint32_t)(challenge >> 32)
+        ^ (uint32_t)challenge;
+
+    uint32_t folded_context =
+        (uint32_t)(context >> 32)
+        ^ (uint32_t)context;
+
+    uint32_t adjustment =
+        (UINT32_C(0xfd6e) * selector)
+        ^ (uint32_t)(context >> 16);
+
+    // secret_mix 的输入及返回值。
+    uint32_t x = folded_challenge ^ folded_context;
+
+    uint32_t mixed =
+        ((x >> 3) ^ UINT32_C(0x254b))
+        + (x ^ UINT32_C(0xfd6e));
+
+    uint32_t second = mixed ^ adjustment;
+
+    uint32_t offset =
+        folded_context
+        + selector
+        + UINT32_C(0x254b)
+        + (folded_challenge >> 3);
+
+    uint32_t third = second ^ offset;
+
+    /*
+     * 前两个字符串字面量各含 16 个 A，共 32 字节。
+     * 随后是 OPEN，再接三个整数；不添加换行。
+     */
+    int size = snprintf(
+        out, cap,
+        "AAAAAAAAAAAAAAAA"
+        "AAAAAAAAAAAAAAAA"
+        "OPEN%" PRIu32 " %" PRIu32 " %" PRIu32,
+        selector, second, third
+    );
+
+    if (size < 0 || (size_t)size >= cap) {
+        return 1;
+    }
+
+    return 0;
 }
