@@ -225,12 +225,66 @@ int solve_phase_5(uint64_t challenge, char *out, size_t cap) {
 
     return write_answer(out, cap, values, count);
 }
+static uint32_t p6_op_0(uint32_t x) {
+    return (x + UINT32_C(0xa7ef)) ^ (x >> 7);
+}
+
+static uint32_t p6_op_1(uint32_t x) {
+    return ((x >> 3) ^ x) + UINT32_C(0xfc29);
+}
+
+static uint32_t p6_op_2(uint32_t x) {
+    return ((x << 7) + UINT32_C(0xceea))
+           ^ (UINT32_C(5) * x);
+}
+
+static uint32_t p6_op_3(uint32_t x) {
+    uint32_t rotated = (x << 1) | (x >> 31);
+    return rotated ^ UINT32_C(0xeb2b);
+}
+
+static uint32_t p6_op_4(uint32_t x) {
+    return (x >> 7) | (x << 25);
+}
+
+static uint32_t p6_op_5(uint32_t x) {
+    return (x ^ UINT32_C(0x6b5c)) + (x << 5);
+}
 
 int solve_phase_6(uint64_t challenge, char *out, size_t cap) {
+    typedef uint32_t (*Operation)(uint32_t);
+
+    static Operation const ops[8] = {
+        p6_op_2,
+        p6_op_3,
+        p6_op_0,
+        p6_op_4,
+        p6_op_0,
+        p6_op_5,
+        p6_op_3,
+        p6_op_1
+    };
+
     uint32_t values[MAX_FIELDS] = {0};
-    size_t count = 0;
-    (void)challenge;
-    // TODO: 根据 phase_06 的汇编，用 challenge 算出口令中的各个整数，依次存入 values，并把 count 改为整数个数。
+    size_t count = 1;
+
+    uint32_t argument =
+        (uint32_t)(challenge >> 6)
+        ^ (uint32_t)(challenge >> 32);
+
+    uint32_t index1 =
+        (uint32_t)(challenge & UINT64_C(7));
+
+    uint32_t index2 =
+        (uint32_t)((challenge >> 3) & UINT64_C(7));
+
+    uint32_t result = ops[index1](argument);
+
+    result ^= UINT32_C(0x1215);
+    result = ops[index2](result);
+
+    values[0] = result + UINT32_C(0x776d);
+
     return write_answer(out, cap, values, count);
 }
 
